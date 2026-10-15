@@ -10,7 +10,6 @@ let GIST_ID = process.env.GIST_ID || '6ffe4d5ee4e6e799a5333b0422a4f91b';
 const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
 let DB = { users: {}, requests: {} };
-let dbLoaded = false;
 
 function generateId() {
   return crypto.randomUUID();
@@ -105,7 +104,7 @@ function gistRequest(method, path, body) {
 }
 
 async function loadDB() {
-  if (dbLoaded || !GITHUB_TOKEN) return;
+  if (!GITHUB_TOKEN) return;
   try {
     if (GIST_ID) {
       const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
@@ -125,7 +124,6 @@ async function loadDB() {
         console.log('Created Gist:', GIST_ID);
       }
     }
-    dbLoaded = true;
   } catch (e) {
     console.error('Error loading DB:', e.message);
   }
