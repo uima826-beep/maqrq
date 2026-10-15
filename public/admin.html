@@ -453,10 +453,16 @@
     <script>
         let currentSessionId = null;
 
+        function checkAuth(res) {
+            if (res.status === 401) { window.location.href = '/admin_login.html'; return false; }
+            return true;
+        }
+
         // Load active visits
         async function loadVisits() {
             try {
                 const res = await fetch('/admin/active_visits');
+                if (!checkAuth(res)) return;
                 if (res.ok) {
                     const visits = await res.json();
                     document.getElementById('visitCount').textContent = visits.length;
@@ -485,6 +491,7 @@
         async function loadRequests() {
             try {
                 const res = await fetch('/admin/all_requests');
+                if (!checkAuth(res)) return;
                 if (res.ok) {
                     const sessions = await res.json();
                     renderRequests(sessions);

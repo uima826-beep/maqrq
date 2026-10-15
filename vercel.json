@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/submit_request", "destination": "/api/index" },
+    { "source": "/request_status/:path*", "destination": "/api/index" },
+    { "source": "/track_visit", "destination": "/api/index" },
+    { "source": "/admin", "destination": "/api/index" },
+    { "source": "/admin/:path*", "destination": "/api/index" }
+  ]
+}

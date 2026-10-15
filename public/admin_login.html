@@ -65,7 +65,7 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        button {
+        button[type="submit"] {
             background-color: #ff7f00;
             color: white;
             padding: 10px 20px;
@@ -75,34 +75,57 @@
             font-size: 16px;
             transition: background-color 0.3s ease;
         }
-        button:hover {
+        button[type="submit"]:hover {
             background-color: #e66a00;
         }
         .error-message {
             color: red;
             margin-top: 10px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div style="position: absolute; top: 10px; left: 10px;">
-        <button class="lang-btn" onclick="window.location.href=\'admin_login_en.html\'">English</button>
+        <button class="lang-btn" onclick="window.location.href='admin_login_en.html'">English</button>
     </div>
     <div class="login-container">
         <img class="admin-login-logo" src="assets/mashreq-logo-header.jpg" alt="شعار بنك المشرق">
         <h1>تسجيل الدخول للوحة المشرف</h1>
-        <form method="POST" action="/admin/login">
+        <form id="adminLoginForm">
             <div class="form-group">
                 <label for="password">كلمة المرور:</label>
                 <input type="password" id="password" name="password" required>
             </div>
             <button type="submit">تسجيل الدخول</button>
         </form>
-        {% if error %}
-            {% if error %}
-                <p class="error-message">{{ error }}</p>
-            {% endif %}
-        {% endif %}
+        <p class="error-message" id="errorMessage"></p>
     </div>
+
+    <script>
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+
+            try {
+                var response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: document.getElementById('password').value })
+                });
+                var result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    window.location.href = '/admin';
+                } else {
+                    errorDiv.textContent = result.message || 'كلمة المرور غير صحيحة';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'حدث خطأ أثناء الاتصال بالخادم';
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 </html>
