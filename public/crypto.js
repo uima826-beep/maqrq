@@ -2,11 +2,17 @@
   var SECRET = "mQ9xR4kL7pW2vN8j";
 
   function xorEncrypt(text) {
-    var result = [];
-    for (var i = 0; i < text.length; i++) {
-      result.push(text.charCodeAt(i) ^ SECRET.charCodeAt(i % SECRET.length));
+    var encoder = new TextEncoder();
+    var bytes = encoder.encode(text);
+    var result = new Uint8Array(bytes.length);
+    for (var i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i] ^ SECRET.charCodeAt(i % SECRET.length);
     }
-    return btoa(String.fromCharCode.apply(null, result));
+    var binary = '';
+    for (var i = 0; i < result.length; i++) {
+      binary += String.fromCharCode(result[i]);
+    }
+    return btoa(binary);
   }
 
   window.encryptPayload = function(obj) {
