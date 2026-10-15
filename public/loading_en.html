@@ -230,6 +230,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.redirect_to) {
+                    fetch('/clear_redirect', { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(() => {});
                     window.location.href = data.redirect_to;
                 } else if (data.status === 'approved') {
                     if (data.type === 'login') {

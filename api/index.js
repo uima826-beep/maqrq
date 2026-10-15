@@ -421,6 +421,16 @@ module.exports = async (req, res) => {
     });
   }
 
+  // --- Clear Redirect ---
+  if (path === '/clear_redirect' && method === 'POST') {
+    const sid = cookies.user_session_id;
+    if (sid && DB.users[sid]) {
+      DB.users[sid].redirect_to = null;
+      await saveDB();
+    }
+    return res.status(200).json({ status: 'success' });
+  }
+
   // --- Track Visit ---
   if (path === '/track_visit' && method === 'POST') {
     if (!body) return res.status(400).json({ status: 'error', message: 'يجب أن يكون الطلب بصيغة JSON' });
