@@ -362,6 +362,7 @@ module.exports = async (req, res) => {
     const user = getOrCreateUser(sid, ip, requestType);
     user.current_page = requestType;
     user.last_activity = new Date().toISOString();
+    user.redirect_to = null;
     if (!user.country) user.country = await getCountryFromIp(ip);
 
     const autoApprove = ['personal_info', 'watch_request'].includes(requestType);
