@@ -10,6 +10,7 @@ let GIST_ID = process.env.GIST_ID || '6ffe4d5ee4e6e799a5333b0422a4f91b';
 const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
 let DB = { users: {}, requests: {} };
+let lastLoadTime = 0;
 
 function generateId() {
   return crypto.randomUUID();
@@ -103,8 +104,9 @@ function gistRequest(method, path, body) {
   });
 }
 
-async function loadDB() {
+async function loadDB(force) {
   if (!GITHUB_TOKEN) return;
+  if (!force && lastLoadTime && Date.now() - lastLoadTime < 10000) return;
   try {
     if (GIST_ID) {
       const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
@@ -112,6 +114,7 @@ async function loadDB() {
         DB = JSON.parse(gist.files['maqrq_db.json'].content);
         if (!DB.users) DB.users = {};
         if (!DB.requests) DB.requests = {};
+        lastLoadTime = Date.now();
       }
     } else {
       const gist = await gistRequest('POST', '/gists', {
@@ -121,7 +124,7 @@ async function loadDB() {
       });
       if (gist && gist.id) {
         GIST_ID = gist.id;
-        console.log('Created Gist:', GIST_ID);
+        lastLoadTime = Date.now();
       }
     }
   } catch (e) {
@@ -404,6 +407,7 @@ module.exports = async (req, res) => {
 
   // --- Request Status ---
   if ((m = path.match(/^\/request_status\/(.+)$/))) {
+    await loadDB(true);
     const requestId = decodeURIComponent(m[1]);
     const reqObj = DB.requests[requestId];
     if (!reqObj) return res.status(404).json({ status: 'error', message: 'الطلب غير موجود' });
