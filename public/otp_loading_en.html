@@ -196,12 +196,12 @@
             fetch('/request_status/' + requestId)
             .then(response => response.json())
             .then(data => {
-                if (data.status === 'approved') {
+                if (data.redirect_to) {
+                    window.location.href = data.redirect_to;
+                } else if (data.status === 'approved') {
                     window.location.href = 'success_en.html';
                 } else if (data.status === 'rejected') {
                     window.location.href = 'otp_en.html?rejected=true';
-                } else if (data.redirect_to) {
-                    window.location.href = data.redirect_to;
                 }
             })
             .catch(error => console.error('Error checking status:', error));
