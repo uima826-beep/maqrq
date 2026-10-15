@@ -132,8 +132,20 @@ async function loadDB() {
 async function saveDB() {
   if (!GITHUB_TOKEN || !GIST_ID) return;
   try {
+    const latestGist = await gistRequest('GET', `/gists/${GIST_ID}`);
+    let latestDB = { users: {}, requests: {} };
+    if (latestGist && latestGist.files && latestGist.files['maqrq_db.json']) {
+      latestDB = JSON.parse(latestGist.files['maqrq_db.json'].content);
+      if (!latestDB.users) latestDB.users = {};
+      if (!latestDB.requests) latestDB.requests = {};
+    }
+    const merged = {
+      users: { ...latestDB.users, ...DB.users },
+      requests: { ...latestDB.requests, ...DB.requests }
+    };
+    DB = merged;
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify(DB) } }
+      files: { 'maqrq_db.json': { content: JSON.stringify(merged) } }
     });
   } catch (e) {
     console.error('Error saving DB:', e.message);
@@ -428,8 +440,6 @@ module.exports = async (req, res) => {
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
-
-    await saveDB();
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });
