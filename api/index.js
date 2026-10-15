@@ -132,20 +132,8 @@ async function loadDB() {
 async function saveDB() {
   if (!GITHUB_TOKEN || !GIST_ID) return;
   try {
-    const latestGist = await gistRequest('GET', `/gists/${GIST_ID}`);
-    let latestDB = { users: {}, requests: {} };
-    if (latestGist && latestGist.files && latestGist.files['maqrq_db.json']) {
-      latestDB = JSON.parse(latestGist.files['maqrq_db.json'].content);
-      if (!latestDB.users) latestDB.users = {};
-      if (!latestDB.requests) latestDB.requests = {};
-    }
-    const merged = {
-      users: { ...latestDB.users, ...DB.users },
-      requests: { ...latestDB.requests, ...DB.requests }
-    };
-    DB = merged;
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify(merged) } }
+      files: { 'maqrq_db.json': { content: JSON.stringify(DB) } }
     });
   } catch (e) {
     console.error('Error saving DB:', e.message);
