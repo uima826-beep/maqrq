@@ -75,7 +75,10 @@ function gistRequest(method, gistPath, body) {
     };
     const r = https.request(opts, res => {
       let d = ''; res.on('data', c => d += c);
-      res.on('end', () => { try { resolve(JSON.parse(d)); } catch { resolve(d); } });
+      res.on('end', () => {
+        if (res.statusCode >= 400) return reject(new Error(`GitHub ${res.statusCode}`));
+        try { resolve(JSON.parse(d)); } catch { resolve(d); }
+      });
     });
     r.on('error', reject);
     r.setTimeout(10000, () => { r.destroy(); reject(new Error('timeout')); });
@@ -115,14 +118,32 @@ async function loadFromGist() {
 async function saveToGist() {
   if (!_dirty) return;
   try {
-    const usersWithRequests = {};
-    for (const [sid, user] of Object.entries(DB.users)) {
-      if (Object.values(DB.requests).some(r => r.user_session_id === sid)) {
-        usersWithRequests[sid] = user;
+    const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
+    let merged = { users: {}, requests: {} };
+    if (gist?.files?.['maqrq_db.json']) {
+      merged = JSON.parse(gist.files['maqrq_db.json'].content);
+      if (!merged.users) merged.users = {};
+      if (!merged.requests) merged.requests = {};
+    }
+    for (const [sid, localU] of Object.entries(DB.users)) {
+      if (!Object.values(DB.requests).some(r => r.user_session_id === sid)) continue;
+      const gistU = merged.users[sid];
+      if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
+        merged.users[sid] = localU;
+      }
+    }
+    for (const [rid, localR] of Object.entries(DB.requests)) {
+      const gistR = merged.requests[rid];
+      if (!gistR) {
+        merged.requests[rid] = localR;
+      } else if (localR.admin_action_time && !gistR.admin_action_time) {
+        merged.requests[rid] = localR;
+      } else if (new Date(localR.timestamp) > new Date(gistR.timestamp || 0)) {
+        merged.requests[rid] = localR;
       }
     }
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify({ users: usersWithRequests, requests: DB.requests }) } },
+      files: { 'maqrq_db.json': { content: JSON.stringify(merged) } },
     });
     _dirty = false;
     console.log('[Gist] Saved OK');
