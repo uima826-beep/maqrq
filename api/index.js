@@ -142,6 +142,7 @@ async function getAllRequests() {
 }
 
 module.exports = async (req, res) => {
+  try {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const path = url.pathname;
   const method = req.method;
@@ -460,4 +461,8 @@ module.exports = async (req, res) => {
   }
 
   return res.status(404).json({ status: 'error', message: 'المسار غير موجود' });
+  } catch (err) {
+    console.error('API Error:', err);
+    return res.status(500).json({ status: 'error', message: err.message || 'Internal server error' });
+  }
 };
