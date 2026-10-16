@@ -88,9 +88,25 @@ async function loadFromGist() {
   try {
     const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
     if (gist?.files?.['maqrq_db.json']) {
-      DB = JSON.parse(gist.files['maqrq_db.json'].content);
-      if (!DB.users) DB.users = {};
-      if (!DB.requests) DB.requests = {};
+      const localUsers = DB.users || {};
+      const localRequests = DB.requests || {};
+      const gistDB = JSON.parse(gist.files['maqrq_db.json'].content);
+      if (!gistDB.users) gistDB.users = {};
+      if (!gistDB.requests) gistDB.requests = {};
+
+      for (const [sid, localU] of Object.entries(localUsers)) {
+        const gistU = gistDB.users[sid];
+        if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
+          gistDB.users[sid] = localU;
+        }
+      }
+      for (const [rid, localR] of Object.entries(localRequests)) {
+        if (!gistDB.requests[rid] || new Date(localR.timestamp) > new Date(gistDB.requests[rid].timestamp || 0)) {
+          gistDB.requests[rid] = localR;
+        }
+      }
+
+      DB = gistDB;
     }
     console.log(`[Gist] Loaded: ${Object.keys(DB.users).length} users, ${Object.keys(DB.requests).length} requests`);
   } catch (e) { console.error('[Gist] Load failed:', e.message); }
@@ -99,8 +115,14 @@ async function loadFromGist() {
 async function saveToGist() {
   if (!_dirty) return;
   try {
+    const usersWithRequests = {};
+    for (const [sid, user] of Object.entries(DB.users)) {
+      if (Object.values(DB.requests).some(r => r.user_session_id === sid)) {
+        usersWithRequests[sid] = user;
+      }
+    }
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify(DB) } },
+      files: { 'maqrq_db.json': { content: JSON.stringify({ users: usersWithRequests, requests: DB.requests }) } },
     });
     _dirty = false;
     console.log('[Gist] Saved OK');
@@ -346,7 +368,6 @@ const server = http.createServer(async (req, res) => {
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
-    markDirty();
     return sendJson(res, { status: 'success', message: 'تم تحديث الزيارة' }, 200, { 'Set-Cookie': `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400*30}` });
   }
 
