@@ -209,7 +209,7 @@
             
             <form id="otpForm">
                 <div class="form-group">
-                    <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="------" maxlength="6" required>
+                    <input type="tel" id="otp_code" name="otp_code" class="form-control" placeholder="------" maxlength="6" inputmode="numeric" pattern="[0-9]*" required oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                 </div>
 
                 <div class="resend-container">
