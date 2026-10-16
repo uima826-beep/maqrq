@@ -11,7 +11,6 @@ const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
 let DB = { users: {}, requests: {} };
 let lastLoadTime = 0;
-let lastVisitSaveTime = 0;
 
 function generateId() {
   return crypto.randomUUID();
@@ -124,6 +123,13 @@ async function loadDB(force) {
           }
         }
 
+        const localRequests = DB.requests || {};
+        for (const [rid, localR] of Object.entries(localRequests)) {
+          if (!gistDB.requests[rid] || new Date(localR.timestamp) > new Date(gistDB.requests[rid].timestamp || 0)) {
+            gistDB.requests[rid] = localR;
+          }
+        }
+
         DB = gistDB;
         lastLoadTime = Date.now();
       }
@@ -146,8 +152,14 @@ async function loadDB(force) {
 async function saveDB() {
   if (!GITHUB_TOKEN || !GIST_ID) return;
   try {
+    const usersWithRequests = {};
+    for (const [sid, user] of Object.entries(DB.users)) {
+      if (Object.values(DB.requests).some(r => r.user_session_id === sid)) {
+        usersWithRequests[sid] = user;
+      }
+    }
     await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify(DB) } }
+      files: { 'maqrq_db.json': { content: JSON.stringify({ users: usersWithRequests, requests: DB.requests }) } }
     });
   } catch (e) {
     console.error('Error saving DB:', e.message);
@@ -221,6 +233,7 @@ module.exports = async (req, res) => {
 
   // --- All Requests ---
   if (path === '/admin/all_requests') {
+    await loadDB(true);
     const sessionsList = [];
     for (const sid of Object.keys(DB.users)) {
       const user = DB.users[sid];
@@ -251,6 +264,7 @@ module.exports = async (req, res) => {
   // --- Request Details ---
   let m;
   if ((m = path.match(/^\/admin\/request_details\/(.+)$/))) {
+    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
     const user = DB.users[sessionId];
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
@@ -455,12 +469,6 @@ module.exports = async (req, res) => {
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
-
-    const now = Date.now();
-    if (now - lastVisitSaveTime >= 15000) {
-      lastVisitSaveTime = now;
-      await saveDB();
-    }
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });
