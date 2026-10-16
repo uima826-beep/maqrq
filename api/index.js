@@ -11,6 +11,7 @@ const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
 let DB = { users: {}, requests: {} };
 let lastLoadTime = 0;
+let lastVisitSaveTime = 0;
 
 function generateId() {
   return crypto.randomUUID();
@@ -445,7 +446,11 @@ module.exports = async (req, res) => {
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
 
-    await saveDB();
+    const now = Date.now();
+    if (now - lastVisitSaveTime >= 15000) {
+      lastVisitSaveTime = now;
+      await saveDB();
+    }
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });

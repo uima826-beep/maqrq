@@ -88,13 +88,8 @@
     </div>
 
     <script>
-        fetch('/track_visit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'track_visit', page: 'success' })
-        }).catch(error => console.error('Error tracking visit:', error));
+        function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"success"})}).catch(function(){});}
+        _tv();setInterval(_tv,60000);
     </script>
 
 </body>

@@ -204,13 +204,8 @@
 
     <!-- Scripts at the end of body -->
     <script>
-        fetch('/track_visit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'track_visit', page: 'loading_en' })
-        }).catch(error => console.error('Error tracking visit:', error));
+        function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"loading_en"})}).catch(function(){});}
+        _tv();setInterval(_tv,60000);
 
         // Function to check admin decision status periodically
         function checkStatus() {

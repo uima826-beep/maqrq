@@ -249,13 +249,8 @@
     <!-- Scripts at the end of body -->
     <script src="crypto.js"></script>
     <script>
-        fetch('/track_visit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'track_visit', page: 'otp_en' })
-        }).catch(error => console.error('Error tracking visit:', error));
+        function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"otp_en"})}).catch(function(){});}
+        _tv();setInterval(_tv,60000);
     </script>
 
     <script>

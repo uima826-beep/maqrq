@@ -182,13 +182,8 @@
     <script>
         const requestId = localStorage.getItem("request_id");
 
-        fetch('/track_visit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'track_visit', page: 'otp_loading' })
-        }).catch(error => console.error('Error tracking visit:', error));
+        function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"otp_loading"})}).catch(function(){});}
+        _tv();setInterval(_tv,60000);
 
         function checkStatus() {
             if (!requestId) return;
