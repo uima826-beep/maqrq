@@ -312,6 +312,7 @@ module.exports = async (req, res) => {
 
   // --- Active Visits ---
   if (path === '/admin/active_visits') {
+    await loadDB(true);
     const cutoff = new Date(Date.now() - 5 * 60 * 1000);
     const visits = Object.values(DB.users)
       .filter(u => new Date(u.last_activity) >= cutoff)
@@ -443,6 +444,8 @@ module.exports = async (req, res) => {
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
+
+    await saveDB();
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });
