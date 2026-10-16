@@ -1,16 +1,34 @@
 const crypto = require('crypto');
-const https = require('https');
 const http = require('http');
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ha09876@@';
 const HMAC_SECRET = process.env.HMAC_SECRET || 'maqrq_admin_secret_2024';
-const _GH = [90,50,104,119,88,48,112,67,78,49,69,120,101,86,78,84,101,68,82,70,87,108,82,115,85,107,73,52,89,122,78,66,98,48,57,87,86,72,112,68,78,72,78,88,97,122,70,72,77,107,49,97,89,103,61,61];
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || Buffer.from(_GH.map(c => String.fromCharCode(c)).join(''), 'base64').toString();
-let GIST_ID = process.env.GIST_ID || '6ffe4d5ee4e6e799a5333b0422a4f91b';
 const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
-let DB = { users: {}, requests: {} };
-let lastLoadTime = 0;
+const FB_SA_B64 = process.env.FB_SA_B64 || 'ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAianVzb3VyLXFhdGFyIiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiZmU1MzAyN2QxYTMxNGIzNzczNjA2NGE3NTMwNzBlYjQ4MDIyMDQ2NCIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZRSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2N3Z2dTakFnRUFBb0lCQVFEZ1c4NVIzdE5zaG5mMVxuYUVaZW0rSThCWjBxdnp6eDJmZVRuSG51Wm1RTXBhUjdudXZQTjJHcmVtUzRZTnAvck9nVjJnMDd2eXgvc1BqRVxuejBDbExhMjZnV2FrZElDVkErTC94YXZwVkFLQUxHcnovWU1lM0k2aU0vNXBobGo3RWFZU2JxZVdnc1BPbHRoUFxuTTFQUmtvUE1GRitlV1B1cGl0eTJzckEwZFNQNGFIRjZhL1Jlb0xkaWE3Kzg2MEZHNFdrSURiMEgrVVR0Umk0OFxubkFUT0FBM3picmtFeFMxQ3dramtHK3JoQ3hCLzRvM0c3ZWgzcnM2RDJjU3BwdGJTTVdwbU9LOE1UTkFOck5VMFxuUkxGNzFDM3hxSDJQRnlYdW9QZkcyNHJFRHZxRjRnWmt1VTRxVUNLeW15NnRXeDFDTWgzT3dJMUFYVDlBM2tzQlxuUTJWNjRtSlRBZ01CQUFFQ2dnRUFYcTZ2eEFKRzlGcE5QcTVhWUN2bURsR0tNZE9SK3pqeTBBTXR1K3ZQRmoxRFxuVEg1Vll0WXE3RXlUTy9KMzA0RGJVdmw2TXpnckpkcEFLZ0tTOUFKeWVpNkk3Q2RVYWs3QkdoTElTWWhRSTlwYVxuNm93V3JVd0VEN1RralpFS2RTNU9DU0pVckdLVUV0ZTdBcldWRG5FSUdQU1NJOGZHc1JhdXJaVjhZaTc3VnFXbVxudGtJdVprR21tV2NjMlZZYytKaW93cXZWLy8rTHg4NmtFVVZaZWJKdmR6TmRvWEQrUmlPamxJNzdjSjJKVmNVeVxuSCs0ZUtySDQ2QXlCZjBiUGU1dVpZTnBmSHVLV1BXU2V2c2F0WWxoRFBCcVF3LzNiSEhBcmdRRkhFUkVSclhJTlxuRnpxQXBIRTNWczdVUHozcHZzL3c0eEpjUzlyT0R3enErYlRuQnJjZENRS0JnUUQzcnlOVDBoT3VsVlY4WmVheFxuSTFnR3BYdzFZMVNZc1NLRCtUNVVsMjBXR1BNL21wK2I0dmNBb2EyNnY5YUppL2tyazJRVldzaWx5ZU8xTTd0VVxua1FWZUlNSGpXZWdDVklpWXVjRFhXS2pOelFieVkyR0J1NVRhVWU0U3Vvd093SXFRY3RWT3R0WVl4YzVtaVM5eFxuZXBaQnpNeXpJbENMQWhQODB6Q2szZUxPZVFLQmdRRG41Qzc4Z1EzdE5uOXprSWEwamc4YzR5aGNWeEZRUFhmaFxuOTVCbm5ObVhMb1BqdmJJU3VneTdYWjF0S2RQVElkRWYxK1JHTDZvYXpoazgyWTNlQmxTVnhvVHM0d09YS2RjWlxuZEZ4SDU2OFRMMFhTWFFQNnNkcGVhZzd4WGdYVkFwR0lkRmNkN1Y4UEw5WGsxcys1MHVCYVFFeVlqTW5WbDNXR1xuS3prMzc5cFVLd0tCZ1FDZHhWQUppcDNDN1prQW5xQnVZWWNtNUs3VUN5dk4vN2R1dll0NHN1Um4yUWpKa1NMdVxuVjRyak9obkNCWVVSSkxwWmlZK05Fc0VRNmlORVAybXFtcDRDc1hjUDdTc2VvTjVKK3JqZDg3bkRMa0Nva2FtQVxuekE0cmExanRVU3I2RXFleEQ1VFVpUjZqdFF5ZXYvQWFwdTJqaUdNMEVEMmg3bmJ3NjAzbkZ2ZnNjUUtCZ0E3NFxuZlV3UjdOcytwSFhLZzlmT1FBMkdZTW10V1ZITDFoeUJoaElhWHpYU2EvTmRBTTBTczlXNDBud0Vza2MwTExNWVxubGdVdCtKWm9iZHF1MU9qYmtjUmxuNWxIZ3FqVXE2MWFCTWNqbnZybkYyUGdXMnhvNVFjcFk3T1RkVjd1SG9VblxudGFRWitnUVorMzRkbkNXTUJxM3M3c1QrZWQxUFBPZ2ZqRDhmUGdJbkFvR0FFWjgwbTNMbUNpMHdWeDRQd0tmNFxucDMrOStZcmZYSFJQL0pYVC80NkFpNkdFYTIrNGRjTXpVSktzQXZGZVUyQTJWbi92cGFHdUNqL0czTkJXV0JRa1xucVdpcnN3RkkrZjN1UzdpRXRCbnM3SHIwTFhrN1NONVVGMVI5emQ1bkhqRjc2ZU5YMHhFdUhDM1hpMjk4VnQzdVxuMVljc3NRWkI5U3hQcXUxOXhPWU9PS2s9XG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAanVzb3VyLXFhdGFyLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwKICAiY2xpZW50X2lkIjogIjExMTU2OTI0OTE5NjMxMDM1NTQyMyIsCiAgImF1dGhfdXJpIjogImh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi9hdXRoIiwKICAidG9rZW5fdXJpIjogImh0dHBzOi8vb2F1dGgyLmdvb2dsZWFwaXMuY29tL3Rva2VuIiwKICAiYXV0aF9wcm92aWRlcl94NTA5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL29hdXRoMi92MS9jZXJ0cyIsCiAgImNsaWVudF94NTA5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL3JvYm90L3YxL21ldGFkYXRhL3g1MDkvZmlyZWJhc2UtYWRtaW5zZGstZmJzdmMlNDBqdXNvdXItcWF0YXIuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBpcy5jb20iCn0K';
+
+if (!getApps().length) {
+  const sa = JSON.parse(Buffer.from(FB_SA_B64, 'base64').toString());
+  initializeApp({ credential: cert(sa) });
+}
+const db = getFirestore();
+const usersCol = db.collection('maqrq_users');
+const requestsCol = db.collection('maqrq_requests');
+
+// --- In-memory cache ---
+const _cache = {};
+function cached(key, ttlMs, fn) {
+  const entry = _cache[key];
+  if (entry && Date.now() - entry.ts < ttlMs) return Promise.resolve(entry.val);
+  return fn().then(val => { _cache[key] = { val, ts: Date.now() }; return val; });
+}
+function clearCache(prefix) {
+  for (const k of Object.keys(_cache)) {
+    if (!prefix || k.startsWith(prefix)) delete _cache[k];
+  }
+}
 
 function generateId() {
   return crypto.randomUUID();
@@ -75,145 +93,55 @@ function getCountryFromIp(ip) {
   });
 }
 
-function gistRequest(method, gistPath, body) {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.github.com',
-      port: 443,
-      path: gistPath,
-      method: method,
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'User-Agent': 'maqrq-app',
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      }
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode >= 400) {
-          return reject(new Error(`GitHub ${res.statusCode}`));
-        }
-        try { resolve(JSON.parse(data)); }
-        catch { resolve(data); }
-      });
-    });
-    req.on('error', reject);
-    req.setTimeout(8000, () => { req.destroy(); reject(new Error('timeout')); });
-    if (body) req.write(JSON.stringify(body));
-    req.end();
+// --- Firestore helpers ---
+async function getUser(sessionId) {
+  const doc = await usersCol.doc(sessionId).get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function setUser(sessionId, data) {
+  await usersCol.doc(sessionId).set(data, { merge: true });
+  clearCache('users.');
+  clearCache('admin.');
+}
+
+async function getRequest(requestId) {
+  const doc = await requestsCol.doc(requestId).get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function setRequest(requestId, data) {
+  await requestsCol.doc(requestId).set(data, { merge: true });
+  clearCache('requests.');
+  clearCache('admin.');
+}
+
+async function getUserRequests(sessionId) {
+  return cached(`requests.${sessionId}`, 5000, async () => {
+    const snap = await requestsCol.where('user_session_id', '==', sessionId).get();
+    return snap.docs.map(d => d.data());
   });
 }
 
-async function loadDB(force) {
-  if (!GITHUB_TOKEN) return;
-  if (!force && lastLoadTime && Date.now() - lastLoadTime < 10000) return;
-  try {
-    if (GIST_ID) {
-      const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
-      if (gist && gist.files && gist.files['maqrq_db.json']) {
-        const localUsers = DB.users || {};
-        const gistDB = JSON.parse(gist.files['maqrq_db.json'].content);
-        if (!gistDB.users) gistDB.users = {};
-        if (!gistDB.requests) gistDB.requests = {};
-
-        for (const [sid, localU] of Object.entries(localUsers)) {
-          const gistU = gistDB.users[sid];
-          if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
-            gistDB.users[sid] = localU;
-          }
-        }
-
-        const localRequests = DB.requests || {};
-        for (const [rid, localR] of Object.entries(localRequests)) {
-          if (!gistDB.requests[rid] || new Date(localR.timestamp) > new Date(gistDB.requests[rid].timestamp || 0)) {
-            gistDB.requests[rid] = localR;
-          }
-        }
-
-        DB = gistDB;
-        lastLoadTime = Date.now();
-      }
-    } else {
-      const gist = await gistRequest('POST', '/gists', {
-        description: 'maqrq database',
-        public: false,
-        files: { 'maqrq_db.json': { content: JSON.stringify(DB) } }
-      });
-      if (gist && gist.id) {
-        GIST_ID = gist.id;
-        lastLoadTime = Date.now();
-      }
-    }
-  } catch (e) {
-    console.error('Error loading DB:', e.message);
-  }
+async function getAllUsers() {
+  return cached('admin.allUsers', 5000, async () => {
+    const snap = await usersCol.get();
+    const users = {};
+    snap.docs.forEach(d => { users[d.id] = d.data(); });
+    return users;
+  });
 }
 
-async function saveDB() {
-  if (!GITHUB_TOKEN || !GIST_ID) return;
-  try {
-    const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
-    let merged = { users: {}, requests: {} };
-    if (gist?.files?.['maqrq_db.json']) {
-      merged = JSON.parse(gist.files['maqrq_db.json'].content);
-      if (!merged.users) merged.users = {};
-      if (!merged.requests) merged.requests = {};
-    }
-
-    for (const [sid, localU] of Object.entries(DB.users)) {
-      if (!Object.values(DB.requests).some(r => r.user_session_id === sid)) continue;
-      const gistU = merged.users[sid];
-      if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
-        merged.users[sid] = localU;
-      }
-    }
-    for (const [rid, localR] of Object.entries(DB.requests)) {
-      const gistR = merged.requests[rid];
-      if (!gistR) {
-        merged.requests[rid] = localR;
-      } else {
-        if (localR.admin_action_time && !gistR.admin_action_time) {
-          merged.requests[rid] = localR;
-        } else if (new Date(localR.timestamp) > new Date(gistR.timestamp || 0)) {
-          merged.requests[rid] = localR;
-        }
-      }
-    }
-
-    await gistRequest('PATCH', `/gists/${GIST_ID}`, {
-      files: { 'maqrq_db.json': { content: JSON.stringify(merged) } }
-    });
-    lastLoadTime = Date.now();
-  } catch (e) {
-    console.error('Error saving DB:', e.message);
-  }
-}
-
-function getOrCreateUser(sessionId, ip, page) {
-  if (!DB.users[sessionId]) {
-    DB.users[sessionId] = {
-      id: generateId(),
-      session_id: sessionId,
-      ip_address: ip || '',
-      country: '',
-      current_page: page || '',
-      last_activity: new Date().toISOString(),
-      redirect_to: null
-    };
-  }
-  return DB.users[sessionId];
-}
-
-function getUserRequests(sessionId) {
-  return Object.values(DB.requests).filter(r => r.user_session_id === sessionId);
+async function getAllRequests() {
+  return cached('admin.allRequests', 5000, async () => {
+    const snap = await requestsCol.get();
+    const reqs = {};
+    snap.docs.forEach(d => { reqs[d.id] = d.data(); });
+    return reqs;
+  });
 }
 
 module.exports = async (req, res) => {
-  await loadDB();
-
   const url = new URL(req.url, `http://${req.headers.host}`);
   const path = url.pathname;
   const method = req.method;
@@ -259,16 +187,21 @@ module.exports = async (req, res) => {
 
   // --- All Requests ---
   if (path === '/admin/all_requests') {
-    await loadDB(true);
+    const allUsers = await getAllUsers();
+    const allReqs = await getAllRequests();
+    const reqsBySession = {};
+    for (const r of Object.values(allReqs)) {
+      if (!reqsBySession[r.user_session_id]) reqsBySession[r.user_session_id] = [];
+      reqsBySession[r.user_session_id].push(r);
+    }
+
     const sessionsList = [];
-    for (const sid of Object.keys(DB.users)) {
-      const user = DB.users[sid];
-      const reqs = getUserRequests(sid);
+    for (const [sid, user] of Object.entries(allUsers)) {
+      const reqs = reqsBySession[sid] || [];
       if (reqs.length === 0) continue;
 
       const userData = {};
       reqs.forEach(r => { if (r.data && typeof r.data === 'object') Object.assign(userData, r.data); });
-
       const sorted = [...reqs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       sessionsList.push({
@@ -290,12 +223,11 @@ module.exports = async (req, res) => {
   // --- Request Details ---
   let m;
   if ((m = path.match(/^\/admin\/request_details\/(.+)$/))) {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    const user = DB.users[sessionId];
+    const user = await getUser(sessionId);
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
 
-    const reqs = getUserRequests(sessionId);
+    const reqs = await getUserRequests(sessionId);
     const userData = {};
     reqs.forEach(r => { if (r.data && typeof r.data === 'object') Object.assign(userData, r.data); });
 
@@ -313,63 +245,59 @@ module.exports = async (req, res) => {
 
   // --- Approve/Reject Login ---
   if ((m = path.match(/^\/admin\/approve_login\/(.+)$/))) {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const pending = getUserRequests(sessionId).filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const user = await getUser(sessionId);
+    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
+    const reqs = await getUserRequests(sessionId);
+    const pending = reqs.filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      DB.requests[pending[0].id].status = 'approved';
-      DB.requests[pending[0].id].admin_action_time = new Date().toISOString();
-      await saveDB();
+      await setRequest(pending[0].id, { status: 'approved', admin_action_time: new Date().toISOString() });
     }
     return res.status(200).json({ status: 'success', message: 'تمت الموافقة على تسجيل الدخول' });
   }
 
   if ((m = path.match(/^\/admin\/reject_login\/(.+)$/))) {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const pending = getUserRequests(sessionId).filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const user = await getUser(sessionId);
+    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
+    const reqs = await getUserRequests(sessionId);
+    const pending = reqs.filter(r => r.type === 'login' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      DB.requests[pending[0].id].status = 'rejected';
-      DB.requests[pending[0].id].admin_action_time = new Date().toISOString();
-      await saveDB();
+      await setRequest(pending[0].id, { status: 'rejected', admin_action_time: new Date().toISOString() });
     }
     return res.status(200).json({ status: 'success', message: 'تم رفض تسجيل الدخول' });
   }
 
   // --- Approve/Reject OTP ---
   if ((m = path.match(/^\/admin\/approve_otp\/(.+)$/))) {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const pending = getUserRequests(sessionId).filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const user = await getUser(sessionId);
+    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
+    const reqs = await getUserRequests(sessionId);
+    const pending = reqs.filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      DB.requests[pending[0].id].status = 'approved';
-      DB.requests[pending[0].id].admin_action_time = new Date().toISOString();
-      await saveDB();
+      await setRequest(pending[0].id, { status: 'approved', admin_action_time: new Date().toISOString() });
     }
     return res.status(200).json({ status: 'success', message: 'تمت الموافقة على OTP' });
   }
 
   if ((m = path.match(/^\/admin\/reject_otp\/(.+)$/))) {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    if (!DB.users[sessionId]) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
-    const pending = getUserRequests(sessionId).filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const user = await getUser(sessionId);
+    if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
+    const reqs = await getUserRequests(sessionId);
+    const pending = reqs.filter(r => r.type === 'otp' && r.status === 'pending').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (pending.length > 0) {
-      DB.requests[pending[0].id].status = 'rejected';
-      DB.requests[pending[0].id].admin_action_time = new Date().toISOString();
-      await saveDB();
+      await setRequest(pending[0].id, { status: 'rejected', admin_action_time: new Date().toISOString() });
     }
     return res.status(200).json({ status: 'success', message: 'تم رفض OTP' });
   }
 
   // --- Active Visits ---
   if (path === '/admin/active_visits') {
-    await loadDB(true);
+    const allUsers = await getAllUsers();
     const cutoff = new Date(Date.now() - 5 * 60 * 1000);
-    const visits = Object.values(DB.users)
+    const visits = Object.values(allUsers)
       .filter(u => new Date(u.last_activity) >= cutoff)
       .map(u => ({
         session_id: u.session_id,
@@ -383,20 +311,17 @@ module.exports = async (req, res) => {
 
   // --- Redirect User ---
   if ((m = path.match(/^\/admin\/redirect_user\/(.+)$/)) && method === 'POST') {
-    await loadDB(true);
     const sessionId = decodeURIComponent(m[1]);
-    const user = DB.users[sessionId];
+    const user = await getUser(sessionId);
     if (!user) return res.status(404).json({ status: 'error', message: 'المستخدم غير موجود' });
     const targetPage = body?.target_page;
     if (!targetPage) return res.status(400).json({ status: 'error', message: 'الصفحة المستهدفة غير محددة' });
-    user.redirect_to = targetPage;
-    await saveDB();
+    await setUser(sessionId, { redirect_to: targetPage });
     return res.status(200).json({ status: 'success', message: 'تم تعيين إعادة التوجيه للمستخدم' });
   }
 
   // --- Submit Request ---
   if (path === '/submit_request' && method === 'POST') {
-    await loadDB(true);
     if (!body) return res.status(400).json({ status: 'error', message: 'يجب أن يكون الطلب بصيغة JSON' });
 
     let requestType, userData;
@@ -417,26 +342,42 @@ module.exports = async (req, res) => {
 
     const sid = cookies.user_session_id || generateId();
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '';
-    const user = getOrCreateUser(sid, ip, requestType);
+
+    let user = await getUser(sid);
+    if (!user) {
+      user = {
+        id: generateId(),
+        session_id: sid,
+        ip_address: ip,
+        country: '',
+        current_page: requestType,
+        last_activity: new Date().toISOString(),
+        redirect_to: null
+      };
+    }
     user.current_page = requestType;
     user.last_activity = new Date().toISOString();
     user.redirect_to = null;
     if (!user.country) user.country = await getCountryFromIp(ip);
+    await setUser(sid, user);
 
     const autoApprove = ['personal_info', 'watch_request'].includes(requestType);
 
-    let reqObj;
+    let reqObj = null;
     if (['login', 'otp'].includes(requestType)) {
-      const existing = getUserRequests(sid)
+      const existingReqs = await getUserRequests(sid);
+      const rejected = existingReqs
         .filter(r => r.type === requestType && r.status === 'rejected')
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      if (existing.length > 0) {
-        const e = DB.requests[existing[0].id];
-        e.data = userData;
-        e.status = 'pending';
-        e.timestamp = new Date().toISOString();
-        e.admin_action_time = null;
-        reqObj = e;
+      if (rejected.length > 0) {
+        reqObj = {
+          ...rejected[0],
+          data: userData,
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          admin_action_time: null
+        };
+        await setRequest(rejected[0].id, reqObj);
       }
     }
 
@@ -451,10 +392,8 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         admin_action_time: autoApprove ? new Date().toISOString() : null
       };
-      DB.requests[newId] = reqObj;
+      await setRequest(newId, reqObj);
     }
-
-    await saveDB();
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(autoApprove ? 200 : 202).json({
@@ -466,11 +405,10 @@ module.exports = async (req, res) => {
 
   // --- Request Status ---
   if ((m = path.match(/^\/request_status\/(.+)$/))) {
-    await loadDB(true);
     const requestId = decodeURIComponent(m[1]);
-    const reqObj = DB.requests[requestId];
+    const reqObj = await getRequest(requestId);
     if (!reqObj) return res.status(404).json({ status: 'error', message: 'الطلب غير موجود' });
-    const user = DB.users[reqObj.user_session_id];
+    const user = await getUser(reqObj.user_session_id);
     return res.status(200).json({
       status: reqObj.status,
       type: reqObj.type,
@@ -482,9 +420,11 @@ module.exports = async (req, res) => {
   // --- Clear Redirect ---
   if (path === '/clear_redirect' && method === 'POST') {
     const sid = cookies.user_session_id;
-    if (sid && DB.users[sid]) {
-      DB.users[sid].redirect_to = null;
-      await saveDB();
+    if (sid) {
+      const user = await getUser(sid);
+      if (user) {
+        await setUser(sid, { redirect_to: null });
+      }
     }
     return res.status(200).json({ status: 'success' });
   }
@@ -497,10 +437,23 @@ module.exports = async (req, res) => {
 
     const sid = cookies.user_session_id || generateId();
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '';
-    const user = getOrCreateUser(sid, ip, page);
+
+    let user = await getUser(sid);
+    if (!user) {
+      user = {
+        id: generateId(),
+        session_id: sid,
+        ip_address: ip,
+        country: '',
+        current_page: page,
+        last_activity: new Date().toISOString(),
+        redirect_to: null
+      };
+    }
     user.current_page = page;
     user.last_activity = new Date().toISOString();
     if (!user.country) user.country = await getCountryFromIp(ip);
+    await setUser(sid, user);
 
     res.setHeader('Set-Cookie', `user_session_id=${sid}; Path=/; SameSite=Lax; Max-Age=${86400 * 30}`);
     return res.status(200).json({ status: 'success', message: 'تم تحديث الزيارة' });

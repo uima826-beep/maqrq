@@ -699,8 +699,8 @@
         function closeModal() { document.getElementById('detailsModal').classList.remove('active'); }
         function closeRedirectModal() { document.getElementById('redirectModal').classList.remove('active'); }
 
-        // Auto-refresh every 3 seconds
-        setInterval(function() { loadVisits(); loadRequests(); }, 3000);
+        // Auto-refresh every 10 seconds
+        setInterval(function() { loadVisits(); loadRequests(); }, 10000);
         loadVisits();
         loadRequests();
     </script>
