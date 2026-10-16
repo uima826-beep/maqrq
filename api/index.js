@@ -112,9 +112,19 @@ async function loadDB(force) {
     if (GIST_ID) {
       const gist = await gistRequest('GET', `/gists/${GIST_ID}`);
       if (gist && gist.files && gist.files['maqrq_db.json']) {
-        DB = JSON.parse(gist.files['maqrq_db.json'].content);
-        if (!DB.users) DB.users = {};
-        if (!DB.requests) DB.requests = {};
+        const localUsers = DB.users || {};
+        const gistDB = JSON.parse(gist.files['maqrq_db.json'].content);
+        if (!gistDB.users) gistDB.users = {};
+        if (!gistDB.requests) gistDB.requests = {};
+
+        for (const [sid, localU] of Object.entries(localUsers)) {
+          const gistU = gistDB.users[sid];
+          if (!gistU || new Date(localU.last_activity) > new Date(gistU.last_activity || 0)) {
+            gistDB.users[sid] = localU;
+          }
+        }
+
+        DB = gistDB;
         lastLoadTime = Date.now();
       }
     } else {
