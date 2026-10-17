@@ -381,8 +381,8 @@ def get_active_visits():
     if not session.get("logged_in"):
         return jsonify({"status": "error", "message": "غير مصرح لك بالوصول"}), 401
 
-    five_minutes_ago = datetime.datetime.now() - datetime.timedelta(minutes=5)
-    active_users = UserSession.query.filter(UserSession.last_activity >= five_minutes_ago).all()
+    two_minutes_ago = datetime.datetime.now() - datetime.timedelta(minutes=2)
+    active_users = UserSession.query.filter(UserSession.last_activity >= two_minutes_ago).all()
 
     visits_list = []
     for user in active_users:

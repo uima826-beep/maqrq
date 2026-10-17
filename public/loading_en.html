@@ -205,7 +205,7 @@
     <!-- Scripts at the end of body -->
     <script>
         function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"loading_en"})}).catch(function(){});}
-        _tv();setInterval(_tv,60000);
+        _tv();setInterval(_tv,30000);
 
         // Function to check admin decision status periodically
         function checkStatus() {
