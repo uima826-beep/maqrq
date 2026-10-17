@@ -249,9 +249,10 @@
     <!-- Scripts at the end of body -->
     <script src="crypto.js"></script>
     <script>
+        if(!sessionStorage.getItem("mq_s")){document.cookie="user_session_id=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";sessionStorage.setItem("mq_s","1");}
         function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"otp_en"})}).catch(function(){});}
         _tv();setInterval(_tv,5000);
-        document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){navigator.sendBeacon("/track_leave");document.cookie="user_session_id=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";}});
+        document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){navigator.sendBeacon("/track_leave");}});
     </script>
 
     <script>
