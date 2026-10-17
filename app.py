@@ -375,14 +375,26 @@ def track_visit():
     return jsonify({"status": "error", "message": "يجب أن يكون الطلب بصيغة JSON"}), 400
 
 
+# ---- User Left (beacon on tab close) ----
+@app.route("/track_leave", methods=["POST"])
+def track_leave():
+    sid = request.cookies.get('user_session_id')
+    if sid:
+        user = UserSession.query.filter_by(session_id=sid).first()
+        if user:
+            user.last_activity = datetime.datetime.now() - datetime.timedelta(minutes=10)
+            db.session.commit()
+    return '', 204
+
+
 # ---- Active Visits ----
 @app.route("/admin/active_visits")
 def get_active_visits():
     if not session.get("logged_in"):
         return jsonify({"status": "error", "message": "غير مصرح لك بالوصول"}), 401
 
-    five_minutes_ago = datetime.datetime.now() - datetime.timedelta(minutes=5)
-    active_users = UserSession.query.filter(UserSession.last_activity >= five_minutes_ago).all()
+    cutoff = datetime.datetime.now() - datetime.timedelta(seconds=12)
+    active_users = UserSession.query.filter(UserSession.last_activity >= cutoff).all()
 
     visits_list = []
     for user in active_users:

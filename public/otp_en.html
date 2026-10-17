@@ -250,7 +250,8 @@
     <script src="crypto.js"></script>
     <script>
         function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"otp_en"})}).catch(function(){});}
-        _tv();setInterval(_tv,30000);
+        _tv();setInterval(_tv,5000);
+        document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){navigator.sendBeacon("/track_leave");}});
     </script>
 
     <script>
