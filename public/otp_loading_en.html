@@ -184,7 +184,7 @@
 
         if(!sessionStorage.getItem("mq_s")){document.cookie="user_session_id=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";sessionStorage.setItem("mq_s","1");}
         function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"otp_loading_en"})}).catch(function(){});}
-        _tv();setInterval(_tv,5000);
+        _tv();var _hb=setInterval(_tv,5000);document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){clearInterval(_hb);}else{_tv();_hb=setInterval(_tv,5000);}});
         
 
         function checkStatus() {
