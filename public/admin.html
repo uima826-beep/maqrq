@@ -453,6 +453,8 @@
 
     <script>
         let currentSessionId = null;
+        let lastRequestsJson = '';
+        let lastVisitsJson = '';
 
         function checkAuth(res) {
             if (res.status === 401) { window.location.href = '/admin_login.html'; return false; }
@@ -466,6 +468,9 @@
                 if (!checkAuth(res)) return;
                 if (res.ok) {
                     const visits = await res.json();
+                    const visitsKey = JSON.stringify(visits.map(v => v.session_id));
+                    if (visitsKey === lastVisitsJson) return;
+                    lastVisitsJson = visitsKey;
                     document.getElementById('visitCount').textContent = visits.length;
                     const grid = document.getElementById('visitsGrid');
                     if (visits.length === 0) {
@@ -507,6 +512,9 @@
                 if (!checkAuth(res)) return;
                 if (res.ok) {
                     const sessions = await res.json();
+                    const reqKey = JSON.stringify(sessions.map(s => ({id:s.session_id,d:s.data,ls:s.login_status,os:s.otp_status})));
+                    if (reqKey === lastRequestsJson) return;
+                    lastRequestsJson = reqKey;
                     renderRequests(sessions);
                 }
             } catch (e) {
