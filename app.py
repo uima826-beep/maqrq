@@ -383,9 +383,11 @@ def track_leave():
     sid = request.cookies.get('user_session_id')
     if sid:
         user = UserSession.query.filter_by(session_id=sid).first()
-        if user:
-            user.is_active = False
-            db.session.commit()
+        if user and user.last_activity:
+            elapsed = (datetime.datetime.now() - user.last_activity).total_seconds()
+            if elapsed > 2:
+                user.is_active = False
+                db.session.commit()
     return '', 204
 
 
