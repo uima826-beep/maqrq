@@ -1,22 +1,20 @@
 const crypto = require('crypto');
 const http = require('http');
-const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { Pool } = require('pg');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ha09876@@';
 const HMAC_SECRET = process.env.HMAC_SECRET || 'maqrq_admin_secret_2024';
 const CRYPTO_SECRET = 'mQ9xR4kL7pW2vN8j';
 
-const FB_SA_B64 = process.env.FB_SA_B64 || 'ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAianVzb3VyLXFhdGFyIiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiMzM1NjgwMzYyNDZiMmRiYjk3M2JjYjQzMTY5MDAwYTA1YjZmM2Y2NiIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZRSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2N3Z2dTakFnRUFBb0lCQVFDcStDa2xlSWY1VSs5dVxuL0J3ZzVPY1ZjWkpwbjg0dHFwSWhWeE5GUWVEVmIvdzN1ZklLY2ppOHRUbENTdkw5NGZFTVBBa0hjVDE2WmY3bVxuWjMzM1JOckYwTm91UWNXdEwwZzJOS2JaWWlrQVJpcmdneTBCWlN1WFJJOStVMmZTMzV3d3pLN1lPVWpHOEdkNFxuVVBaT1p1TkZZOEdVUDBHY1NEOE5iUEJsL2FRLzZSbnJncmZBbjdPb3pZQkh1VGRsQWF1bWRkR0xEOUtBNjFiYlxuelJEclh5cjBmRnFzRVA4dGd4d1BJa2cwbG10Qm5WL0dBTFlGbmNIZUlWZmNhVGNKNDFKTnRmczhXT2hUTnZUK1xuZXhBNVNQN0k1Q0FMdlArZm1QSGx4bGdVY3c4QmRxV3FKcFp4VVJZVXlPMFBqNTI1MmU4V2ZKNmNITVRMRHJFNFxuUnNZV3FpTDVBZ01CQUFFQ2dnRUFBLzRsWTZGaWdmOG9XVDMrVGttVUEyM2liNHR3MkFjZlIxNXdNWlFlc3d4NVxuVkhmeXM2YVYyVHhkZEdHaWk0S1o4dGFkRndqU1dORDBlazFNOENuT2hTY3pzTVlqMTQzN0dYREE5S25kWk1QaVxuUzZEUUxaNWJpOGlpQjlEckhMaW1HcURmVVFOMXNKNlV1T3FGSUVaVTZIMzVjTGt0eTZveUtGT1V1cXV6dXJPTlxuU1ZuV2R3VGdnOFVrU3FVN1dhQUVVMWtxOTV6akZNSEIwWXhwL2ZTRkhPNWpnb3pIZFpYZTc1b2hzSDhFVk9JMlxuMGlJc2ZyNllKRllFa0pNaHVMZ1VkTG1yV240allPbE9rSVkyckxhN2J1ZUhyY0YvS2xwS2txTk9JTWpBRmtpdVxuak1Ed2tNc0ZxQlhYZnBPckdKWnNYZ2J4ZXAwVWtjQmN6aEdTVkNEVS9RS0JnUURYVDFJT1oyeXhyVEFDNzlpNFxudTh6L0I4UnRTZHBqTGVYR293ZnNzOU0yNVZYUVhjZUxqRnZVL1BJQXRTL1JCRmlCeDVWK3Z1K0pJdkZVVGpiRlxuc3pqakh5NnViYjk4akZZa0JqYktQU2c2ckZweTN1MzJMdEsyWC9uVHVGbDIzNTFPZnA4RjJBanI1UnZzMjRGSVxudVFpSzU0WmtwSnpPZDBRVUpnV1JTbE5nalFLQmdRRExSNmFOVVppK2c2ZzRwZHZ6bU1hZnNGcXJRS2IvTnpvNlxucXIwOGRzdzlqNGRuaDdVS3NlVG5RTEhqQzE2anp2ckYxeS8xMGdYdjhrd05OcHlNbExGbTlVUS9RVC80azJabFxuNTAydEx5QktjVG1yVXhLK3N3Z1FFdmhtOWwxQlF1K1pyVTczcDJvenJLS1lESzlVbktiOUVLaVkxUk5lY2FHZlxuOHhPRTJLdS9IUUtCZ1FEQmVjS250T0prYXRjbzNIUW4xSUpxYllWaUc2cEYwem1XSEd3RGxMZm9yWDVHWmU3cFxuQkRDRkhPTXVKYUtaTlVsL0hXVEY1emVDU01jSlZkczhIa2V4T0JVUG93a2VGMUZVdjh5K1FPU0VqTm9lUFJzaVxuVElNR1pRb3U2WXBqR3AvVnFFeW55TENEb1haTmloWUx6bEhSMkNqWkNWN3EzUnRzNjVtM0xFM3VCUUtCZ0ZZNVxueTAwUWVvRDlhYUsxdituQk9TZE5iL2hLVVV2YWlrbU9XUHpIeTNTbGFDTWpMa2tlRW1HQlVMTmxCRHpwcy9ldFxuZ250OEhlYWMyV09WY2F3eitsZ1kyMTBWZVdRZ2FnUDVyRG8wemphbGRuZlVvaFBmN3lDYVcyR1pTUTlBckU5OFxuY3cyYnB2SEtYYUd2WjhPMU95UUhKK3pFSFJZbmp3NUExbHU0YUltRkFvR0FjcjlXTzdzMC9GY0luK212Wm5Wa1xuR1Zxc08zM0NFaGJObmwzVjVrc1NHcUVpcDFzL2RsVzM3TCtxS1NybExuMnRYbURPTHNDa1BERDdib1JpNDE0RFxuY1BBMGJjUXNHdkJ5SFpiVzRBOFVPMW9OUzRDWitMS2hpR2V2Wk5ORGdPRHljUmRhekMyeFluMzc2UHJ4SkkzVlxubExTWmZQSGNGWHZxWURrS0lTS0V0Y0k9XG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAanVzb3VyLXFhdGFyLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwKICAiY2xpZW50X2lkIjogIjExMTU2OTI0OTE5NjMxMDM1NTQyMyIsCiAgImF1dGhfdXJpIjogImh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi9hdXRoIiwKICAidG9rZW5fdXJpIjogImh0dHBzOi8vb2F1dGgyLmdvb2dsZWFwaXMuY29tL3Rva2VuIiwKICAiYXV0aF9wcm92aWRlcl94NTA5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL29hdXRoMi92MS9jZXJ0cyIsCiAgImNsaWVudF94NTA5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL3JvYm90L3YxL21ldGFkYXRhL3g1MDkvZmlyZWJhc2UtYWRtaW5zZGstZmJzdmMlNDBqdXNvdXItcWF0YXIuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBpcy5jb20iCn0K';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres.ueoqbkbzajcwkqnpskel:HaH0987%40%40%23%23@aws-0-eu-west-1.pooler.supabase.com:5432/postgres';
 
-if (!getApps().length) {
-  const sa = JSON.parse(Buffer.from(FB_SA_B64, 'base64').toString());
-  initializeApp({ credential: cert(sa) });
-}
-const db = getFirestore();
-
-const usersDoc = db.doc('maqrq_store/users');
-const requestsDoc = db.doc('maqrq_store/requests');
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 1,
+  idleTimeoutMillis: 20000,
+  connectionTimeoutMillis: 10000
+});
 
 const CACHE_TTL = 60000;
 const _cache = {};
@@ -33,26 +31,71 @@ function clearCache(prefix) {
 
 async function loadUsers() {
   return cached('store.users', CACHE_TTL, async () => {
-    const doc = await usersDoc.get();
-    return doc.exists ? doc.data() : {};
+    const { rows } = await pool.query('SELECT * FROM maqrq_users');
+    const users = {};
+    for (const row of rows) {
+      users[row.session_id] = {
+        id: row.id,
+        session_id: row.session_id,
+        ip_address: row.ip_address || '',
+        country: row.country || '',
+        current_page: row.current_page || '',
+        last_activity: row.last_activity ? new Date(row.last_activity).toISOString() : null,
+        redirect_to: row.redirect_to || null
+      };
+    }
+    return users;
   });
 }
 
 async function loadRequests() {
   return cached('store.requests', CACHE_TTL, async () => {
-    const doc = await requestsDoc.get();
-    return doc.exists ? doc.data() : {};
+    const { rows } = await pool.query('SELECT * FROM maqrq_requests');
+    const requests = {};
+    for (const row of rows) {
+      requests[row.id] = {
+        id: row.id,
+        user_session_id: row.user_session_id,
+        type: row.type,
+        data: row.data || {},
+        status: row.status || 'pending',
+        timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null,
+        admin_action_time: row.admin_action_time ? new Date(row.admin_action_time).toISOString() : null
+      };
+    }
+    return requests;
   });
 }
 
 async function saveUser(sessionId, data) {
-  await usersDoc.set({ [sessionId]: data }, { merge: true });
+  await pool.query(
+    `INSERT INTO maqrq_users (session_id, id, ip_address, country, current_page, last_activity, redirect_to)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (session_id) DO UPDATE SET
+       ip_address = EXCLUDED.ip_address,
+       country = EXCLUDED.country,
+       current_page = EXCLUDED.current_page,
+       last_activity = EXCLUDED.last_activity,
+       redirect_to = EXCLUDED.redirect_to`,
+    [sessionId, data.id, data.ip_address || '', data.country || '', data.current_page || '', data.last_activity || new Date().toISOString(), data.redirect_to || null]
+  );
   clearCache('store.users');
   clearCache('admin.');
 }
 
 async function saveRequest(requestId, data) {
-  await requestsDoc.set({ [requestId]: data }, { merge: true });
+  await pool.query(
+    `INSERT INTO maqrq_requests (id, user_session_id, type, data, status, timestamp, admin_action_time)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (id) DO UPDATE SET
+       user_session_id = EXCLUDED.user_session_id,
+       type = EXCLUDED.type,
+       data = EXCLUDED.data,
+       status = EXCLUDED.status,
+       timestamp = EXCLUDED.timestamp,
+       admin_action_time = EXCLUDED.admin_action_time`,
+    [requestId, data.user_session_id, data.type, JSON.stringify(data.data || {}), data.status || 'pending', data.timestamp || new Date().toISOString(), data.admin_action_time || null]
+  );
   clearCache('store.requests');
   clearCache('admin.');
 }
