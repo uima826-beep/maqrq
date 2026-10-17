@@ -30,6 +30,7 @@ class UserSession(db.Model):
     country = db.Column(db.String(255))
     current_page = db.Column(db.String(255))
     last_activity = db.Column(db.DateTime, default=datetime.datetime.now)
+    is_active = db.Column(db.Boolean, default=True)
     redirect_to = db.Column(db.String(255), nullable=True)
 
     requests = db.relationship("ClientRequest", backref="user_session", lazy=True, cascade="all, delete-orphan")
@@ -365,6 +366,7 @@ def track_visit():
         user, sid = get_or_create_user(current_page=page)
         user.current_page = page
         user.last_activity = datetime.datetime.now()
+        user.is_active = True
         if not user.country:
             user.country = get_country_from_ip(user.ip_address)
         db.session.commit()
@@ -382,7 +384,7 @@ def track_leave():
     if sid:
         user = UserSession.query.filter_by(session_id=sid).first()
         if user:
-            user.last_activity = datetime.datetime.now() - datetime.timedelta(minutes=10)
+            user.is_active = False
             db.session.commit()
     return '', 204
 
@@ -405,7 +407,10 @@ def get_active_visits():
         return jsonify({"status": "error", "message": "غير مصرح لك بالوصول"}), 401
 
     cutoff = datetime.datetime.now() - datetime.timedelta(seconds=12)
-    active_users = UserSession.query.filter(UserSession.last_activity >= cutoff).all()
+    active_users = UserSession.query.filter(
+        UserSession.last_activity >= cutoff,
+        UserSession.is_active == True
+    ).all()
 
     visits_list = []
     for user in active_users:
@@ -443,6 +448,12 @@ def admin_redirect_user(user_session_id):
 # ============ تهيئة قاعدة البيانات ============
 with app.app_context():
     db.create_all()
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 if __name__ == "__main__":
