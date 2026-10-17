@@ -384,7 +384,9 @@ def track_leave():
         if user:
             user.last_activity = datetime.datetime.now() - datetime.timedelta(minutes=10)
             db.session.commit()
-    return '', 204
+    response = make_response('', 204)
+    response.delete_cookie('user_session_id')
+    return response
 
 
 # ---- Active Visits ----

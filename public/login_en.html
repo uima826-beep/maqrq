@@ -319,7 +319,7 @@
     <script>
         function _tv(){fetch("/track_visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"login_en"})}).catch(function(){});}
         _tv();setInterval(_tv,5000);
-        document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){navigator.sendBeacon("/track_leave");}});
+        document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"){navigator.sendBeacon("/track_leave");document.cookie="user_session_id=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";}});
 
         function togglePassword() {
             const passwordField = document.getElementById("password");
