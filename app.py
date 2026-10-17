@@ -387,6 +387,17 @@ def track_leave():
     return '', 204
 
 
+# ---- Clear All Data ----
+@app.route("/admin/clear_all", methods=["POST"])
+def admin_clear_all():
+    if not session.get("logged_in"):
+        return jsonify({"status": "error", "message": "غير مصرح لك بالوصول"}), 401
+    ClientRequest.query.delete()
+    UserSession.query.delete()
+    db.session.commit()
+    return jsonify({"status": "success", "message": "تم حذف جميع البيانات"})
+
+
 # ---- Active Visits ----
 @app.route("/admin/active_visits")
 def get_active_visits():

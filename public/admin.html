@@ -361,6 +361,7 @@
             <h1>لوحة تحكم المشرف</h1>
         </div>
         <div class="header-actions">
+            <button onclick="clearAllData()" style="background-color:#ff7f00;color:white;border:none;padding:8px 18px;border-radius:6px;font-size:14px;cursor:pointer;">حذف كل البيانات</button>
             <a href="/admin/logout" class="logout-btn">تسجيل الخروج</a>
         </div>
     </header>
@@ -485,6 +486,18 @@
             } catch (e) {
                 console.error('Error loading visits:', e);
             }
+        }
+
+        async function clearAllData() {
+            if (!confirm('هل أنت متأكد من حذف جميع البيانات؟')) return;
+            try {
+                const res = await fetch('/admin/clear_all', { method: 'POST' });
+                if (res.ok) {
+                    alert('تم حذف جميع البيانات');
+                    loadActiveVisits();
+                    loadRequests();
+                }
+            } catch (e) { alert('حدث خطأ'); }
         }
 
         // Load all requests grouped by session
