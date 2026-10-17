@@ -206,6 +206,7 @@
         }
 
         if (requestId) {
+            checkStatus();
             setInterval(checkStatus, 3000);
         } else {
             setTimeout(() => { window.location.href = 'otp_en.html'; }, 5000);

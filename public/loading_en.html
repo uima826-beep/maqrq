@@ -250,7 +250,8 @@
             .catch(error => console.error('Error checking status:', error));
         }
 
-        // Poll every 3 seconds
+        // Check immediately then poll every 3 seconds
+        checkStatus();
         setInterval(checkStatus, 3000);
     </script>
 

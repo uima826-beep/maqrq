@@ -447,6 +447,18 @@ def admin_redirect_user(user_session_id):
     return jsonify({"status": "error", "message": "يجب أن يكون الطلب بصيغة JSON"}), 400
 
 
+# ---- Clear Redirect ----
+@app.route("/clear_redirect", methods=["POST"])
+def clear_redirect():
+    sid = request.cookies.get('user_session_id')
+    if sid:
+        user = UserSession.query.filter_by(session_id=sid).first()
+        if user:
+            user.redirect_to = None
+            db.session.commit()
+    return '', 204
+
+
 # ============ تهيئة قاعدة البيانات ============
 with app.app_context():
     db.create_all()

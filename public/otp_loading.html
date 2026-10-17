@@ -206,6 +206,7 @@
         }
 
         if (requestId) {
+            checkStatus();
             setInterval(checkStatus, 3000);
         } else {
             // إذا لم يوجد ID، ننتظر قليلاً ثم نعود لصفحة الـ OTP
