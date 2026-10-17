@@ -545,15 +545,23 @@
                 const loginStatus = s.login_status || null;
                 const otpStatus = s.otp_status || null;
 
-                // Actions column: approve/reject for login and otp only
+                // Actions column: approve/reject for login and otp
                 let actionsHtml = '';
                 if (loginStatus === 'pending') {
                     actionsHtml += '<button class="action-btn btn-approve" onclick="approveLogin(\'' + s.session_id + '\')">قبول دخول</button> ';
                     actionsHtml += '<button class="action-btn btn-reject" onclick="rejectLogin(\'' + s.session_id + '\')">رفض دخول</button>';
                 } else if (loginStatus === 'approved') {
-                    actionsHtml += '<span class="status-text status-approved">✓ مقبول</span>';
+                    actionsHtml += '<span class="status-text status-approved">✓ دخول مقبول</span> ';
+                    if (otpStatus === 'pending') {
+                        actionsHtml += '<button class="action-btn btn-approve" onclick="approveOtp(\'' + s.session_id + '\')">قبول OTP</button> ';
+                        actionsHtml += '<button class="action-btn btn-reject" onclick="rejectOtp(\'' + s.session_id + '\')">رفض OTP</button>';
+                    } else if (otpStatus === 'approved') {
+                        actionsHtml += '<span class="status-text status-approved">✓ OTP مقبول</span>';
+                    } else if (otpStatus === 'rejected') {
+                        actionsHtml += '<span class="status-text status-rejected">✗ OTP مرفوض</span>';
+                    }
                 } else if (loginStatus === 'rejected') {
-                    actionsHtml += '<span class="status-text status-rejected">✗ مرفوض</span>';
+                    actionsHtml += '<span class="status-text status-rejected">✗ دخول مرفوض</span>';
                 }
 
                 return '<tr>' +
